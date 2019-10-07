@@ -3,8 +3,7 @@ use std::result::Result;
 
 use std::convert::AsRef;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum HttpMethod {
     Options,
     Get,
@@ -13,11 +12,10 @@ pub enum HttpMethod {
     Put,
     Delete,
     Trace,
-    Extension(String)
+    Extension(String),
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum HttpHeaderName {
     Accept,
     AcceptCharset,
@@ -25,14 +23,13 @@ pub enum HttpHeaderName {
     Host,
     Referer,
     UserAgent,
-    Custom(String)
+    Custom(String),
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct HttpHeader {
-    name:  HttpHeaderName,
-    value: String
+    pub name: HttpHeaderName,
+    pub value: String,
 }
 
 trait HttpHeaderSplitTrim {
@@ -53,18 +50,14 @@ impl HttpHeader {
     pub fn new(line: &str) -> Result<HttpHeader, String> {
         let parts = line.splitn_trim(2, ":");
         if parts.len() != 2 {
-            return Err(
-                format!("Too many parts after line split: {}", parts.len()))
+            return Err(format!("Too many parts after line split: {}", parts.len()));
         }
-        let name  = parts[0].to_ascii_lowercase();
+        let name = parts[0].to_ascii_lowercase();
         let value = parts[1];
-        fn build_request(
-            name:  HttpHeaderName,
-            value: &str
-        ) -> Result<HttpHeader, String> {
+        fn build_request(name: HttpHeaderName, value: &str) -> Result<HttpHeader, String> {
             Ok(HttpHeader {
-                name:  name,
-                value: value.to_string()
+                name: name,
+                value: value.to_string(),
             })
         }
         if name == "accept" {
@@ -85,79 +78,89 @@ impl HttpHeader {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct HttpRequest {
-    method:  HttpMethod,
-    uri:     String,
-    headers: Vec<HttpHeader>
+    pub method: HttpMethod,
+    pub uri: String,
+    pub headers: Vec<HttpHeader>,
 }
 
 impl HttpRequest {
     pub fn new(header: &str) -> Result<HttpRequest, String> {
         let lines = header.split_trim("\r\n");
         if lines.len() == 0 {
-            return Result::Err(format!("No CRLF in request: {}", header))
+            return Result::Err(format!("No CRLF in request: {}", header));
         }
         let request_line: Vec<&str> = lines[0].split_whitespace().collect();
         let method = match request_line[0].to_ascii_lowercase().as_ref() {
             "options" => HttpMethod::Options,
-            "get"     => HttpMethod::Get,
-            "header"  => HttpMethod::Header,
-            "post"    => HttpMethod::Post,
-            "put"     => HttpMethod::Put,
-            "delete"  => HttpMethod::Delete,
-            "trace"   => HttpMethod::Trace,
-            x         => HttpMethod::Extension(x.to_string())
+            "get" => HttpMethod::Get,
+            "header" => HttpMethod::Header,
+            "post" => HttpMethod::Post,
+            "put" => HttpMethod::Put,
+            "delete" => HttpMethod::Delete,
+            "trace" => HttpMethod::Trace,
+            x => HttpMethod::Extension(x.to_string()),
         };
         let uri = request_line[1].to_string();
         //TODO(efuquen): Ignoring any header that throws error.  Should
         //probably log this.
-        let headers = (&lines[1 ..]).iter().filter_map(|l| {
-            HttpHeader::new(l).ok()
-        }).collect();
+        let headers = (&lines[1..])
+            .iter()
+            .filter_map(|l| HttpHeader::new(l).ok())
+            .collect();
 
-        Result::Ok(HttpRequest { method: method, uri: uri, headers: headers })
+        Result::Ok(HttpRequest {
+            method: method,
+            uri: uri,
+            headers: headers,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::HttpMethod;
-    use super::HttpRequest;
     use super::HttpHeader;
     use super::HttpHeaderName;
+    use super::HttpMethod;
+    use super::HttpRequest;
 
-    fn assert_header_eq(
-        header_str: &str, name: HttpHeaderName, value: &str) {
+    fn assert_header_eq(header_str: &str, name: HttpHeaderName, value: &str) {
         let header = HttpHeader::new(header_str).unwrap();
-        assert_eq!(name,  header.name);
+        assert_eq!(name, header.name);
         assert_eq!(value, header.value);
     }
 
     #[test]
     fn http_request_headers_basic() {
-        assert_header_eq("Accept: audio/*; q=0.2, audio/basic",
-                         HttpHeaderName::Accept,
-                         "audio/*; q=0.2, audio/basic");
-        assert_header_eq("Accept-Charset: iso-8859-5, unicode-1-1;q=0.8",
-                         HttpHeaderName::AcceptCharset,
-                         "iso-8859-5, unicode-1-1;q=0.8");
-        assert_header_eq("Referer: http://www.w3.org/hypertext/DataSources/Overview.html",
-                         HttpHeaderName::Referer,
-                         "http://www.w3.org/hypertext/DataSources/Overview.html");
-        assert_header_eq("User-Agent: CERN-LineMode/2.15 libwww/2.17b3",
-                         HttpHeaderName::UserAgent,
-                         "CERN-LineMode/2.15 libwww/2.17b3");
+        assert_header_eq(
+            "Accept: audio/*; q=0.2, audio/basic",
+            HttpHeaderName::Accept,
+            "audio/*; q=0.2, audio/basic",
+        );
+        assert_header_eq(
+            "Accept-Charset: iso-8859-5, unicode-1-1;q=0.8",
+            HttpHeaderName::AcceptCharset,
+            "iso-8859-5, unicode-1-1;q=0.8",
+        );
+        assert_header_eq(
+            "Referer: http://www.w3.org/hypertext/DataSources/Overview.html",
+            HttpHeaderName::Referer,
+            "http://www.w3.org/hypertext/DataSources/Overview.html",
+        );
+        assert_header_eq(
+            "User-Agent: CERN-LineMode/2.15 libwww/2.17b3",
+            HttpHeaderName::UserAgent,
+            "CERN-LineMode/2.15 libwww/2.17b3",
+        );
         /*
         assert_header_eq("",
                          HttpHeaderName::,
                          "");
         */
-
     }
 
-            #[test]
+    #[test]
     fn http_get_request() {
         let get_request_str = "GET /some/path HTTP/1.1\r\n\
                                Host: http://rsproxy.com\r\n\
@@ -170,4 +173,3 @@ mod tests {
         assert_eq!("http://rsproxy.com", host_header.value);
     }
 }
-
